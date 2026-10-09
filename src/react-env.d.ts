@@ -1,4 +1,4 @@
-// Type declarations for React, ReactDOM, and ES/Vite environment
+// Type declarations for React, ReactDOM, Firebase, Lucide, and ES/Vite environment
 // Standalone definitions without requiring external @types packages.
 
 declare module 'react' {
@@ -35,7 +35,7 @@ declare module 'react' {
   export function useReducer<R extends (...args: any[]) => any>(reducer: R, initialState: any, initialAction?: any): [any, any];
 
   export interface ChangeEvent<T = any> {
-    target: T & { value: string };
+    target: T & { value: string; files?: any };
   }
 
   export interface MouseEvent<T = any> {
@@ -55,6 +55,13 @@ declare module 'react' {
     altKey?: boolean;
     metaKey?: boolean;
     preventDefault(): void;
+  }
+
+  export interface DragEvent<T = any> {
+    preventDefault(): void;
+    stopPropagation(): void;
+    dataTransfer?: any;
+    target: T;
   }
 
   export interface SyntheticEvent<T = any> {
@@ -220,6 +227,83 @@ declare module 'lucide-react' {
   export const Search: IconComponent;
   export const Plus: IconComponent;
   export const ArrowRight: IconComponent;
+  export const ShieldCheck: IconComponent;
+  export const XCircle: IconComponent;
+  export const AlertTriangle: IconComponent;
+  export const Loader2: IconComponent;
+  export const RefreshCw: IconComponent;
+  export const Bell: IconComponent;
+  export const Menu: IconComponent;
+  export const Command: IconComponent;
+  export const LayoutDashboard: IconComponent;
+  export const FolderKanban: IconComponent;
+  export const Settings: IconComponent;
+  export const Star: IconComponent;
+  export const MessageSquare: IconComponent;
+  export const ZoomIn: IconComponent;
+  export const ZoomOut: IconComponent;
+  export const ChevronLeft: IconComponent;
+  export const ChevronRight: IconComponent;
+  export const Code2: IconComponent;
+  export const Timer: IconComponent;
+  export const Zap: IconComponent;
+  export const Layers: IconComponent;
+  export const Cpu: IconComponent;
+  export const Database: IconComponent;
+  export const Calculator: IconComponent;
+  export const Upload: IconComponent;
+  export const FileUp: IconComponent;
+}
+
+declare module 'firebase/app' {
+  export interface FirebaseApp { [key: string]: any }
+  export function initializeApp(config: any): FirebaseApp;
+  export function getApps(): FirebaseApp[];
+  export function getApp(): FirebaseApp;
+}
+
+declare module 'firebase/firestore' {
+  export interface Firestore { [key: string]: any }
+  export type Unsubscribe = () => void;
+  export function getFirestore(app?: any): Firestore;
+  export function collection(db: any, ...pathSegments: string[]): any;
+  export function doc(db: any, ...pathSegments: string[]): any;
+  export function getDocs(query: any): Promise<any>;
+  export function getDoc(ref: any): Promise<any>;
+  export function setDoc(ref: any, data: any, options?: any): Promise<any>;
+  export function updateDoc(ref: any, data: any): Promise<any>;
+  export function deleteDoc(ref: any): Promise<any>;
+  export function query(collectionRef: any, ...queryConstraints: any[]): any;
+  export function where(fieldPath: string, opStr: any, value: any): any;
+  export function orderBy(fieldPath: string, directionStr?: any): any;
+  export function limit(limit: number): any;
+  export function onSnapshot(ref: any, onNext: (snapshot: any) => void, onError?: (error: any) => void): Unsubscribe;
+  export function addDoc(collectionRef: any, data: any): Promise<any>;
+  export function serverTimestamp(): any;
+  export function increment(n: number): any;
+}
+
+declare module 'firebase/storage' {
+  export interface FirebaseStorage { [key: string]: any }
+  export function getStorage(app?: any): FirebaseStorage;
+  export function ref(storage: any, url?: string): any;
+  export function uploadBytes(ref: any, data: any, metadata?: any): Promise<any>;
+  export function getDownloadURL(ref: any): Promise<string>;
+}
+
+declare module 'firebase/auth' {
+  export interface Auth { [key: string]: any }
+  export function getAuth(app?: any): Auth;
+  export function signInAnonymously(auth: any): Promise<any>;
+  export function onAuthStateChanged(auth: any, callback: (user: any) => void): any;
+}
+
+interface ImportMetaEnv {
+  [key: string]: any;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
 }
 
 declare namespace React {
@@ -227,7 +311,7 @@ declare namespace React {
   export type FunctionComponent<P = {}> = FC<P>;
   export type ReactElement<P = any, T = any> = any;
   export type ReactNode = any;
-  export type ChangeEvent<T = any> = { target: T & { value: string } };
+  export type ChangeEvent<T = any> = { target: T & { value: string; files?: any } };
   export type MouseEvent<T = any> = { preventDefault(): void; stopPropagation(): void };
   export type FormEvent<T = any> = { preventDefault(): void; stopPropagation(): void };
   export interface KeyboardEvent<T = any> {
@@ -237,6 +321,12 @@ declare namespace React {
     altKey?: boolean;
     metaKey?: boolean;
     preventDefault(): void;
+  }
+  export interface DragEvent<T = any> {
+    preventDefault(): void;
+    stopPropagation(): void;
+    dataTransfer?: any;
+    target: T;
   }
   export interface SVGProps<T = any> {
     className?: string;

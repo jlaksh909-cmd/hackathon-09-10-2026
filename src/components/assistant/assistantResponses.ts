@@ -1,6 +1,6 @@
-import { INITIAL_RESOURCES, Resource } from '../../data/mockData';
+import { mockResources as INITIAL_RESOURCES, type Resource } from '../../data/mockData';
 import { CURATED_VIDEO_LECTURES } from './videoLecturesData';
-import {
+import type {
   ChatMessage,
   LanguageFilter,
   PdfSummary,
@@ -126,10 +126,10 @@ export function generatePdfSummary(resource: Resource): PdfSummary {
   return {
     documentId: resource.id,
     documentTitle: resource.title,
-    fileSize: resource.fileSize,
+    fileSize: resource.fileSize || '4.2 MB',
     summaryBullets: [
       resource.summary,
-      `Curated specifically for ${resource.branch} (Year ${resource.year}) with ${resource.upvotes} faculty and peer endorsements.`,
+      `Curated specifically for ${resource.branch} (${resource.year}) with ${resource.upvotes} faculty and peer endorsements.`,
       `Includes verified university exam patterns, step-by-step proofs, and high-frequency problem walkthroughs.`,
     ],
     keyExamTakeaways: resource.keyTakeaways || [
@@ -137,7 +137,7 @@ export function generatePdfSummary(resource: Resource): PdfSummary {
       'Always write standard assumptions and draw neat labeled diagrams for full step marks.',
       'Practice past 3 years university question papers provided at the end of this document.',
     ],
-    highWeightageTopics: resource.tags.map((t) => t.toUpperCase()),
+    highWeightageTopics: (resource.tags || ['EXAM PREP', 'FORMULAS', 'PROOFS']).map((t: string) => t.toUpperCase()),
   };
 }
 
@@ -152,7 +152,6 @@ export function filterVideoLectures(
   });
 
   if (matches.length === 0) {
-    // If no direct keyword match, default to a balanced set
     matches = CURATED_VIDEO_LECTURES.slice(0, 4);
   }
 
@@ -174,24 +173,26 @@ export function filterVideoLectures(
 export function findMatchingResources(query: string, branch = 'All', year = 'All'): Resource[] {
   const q = query.toLowerCase();
 
-  let matched = INITIAL_RESOURCES.filter((res) => {
-    const searchSpace = `${res.title} ${res.subject} ${res.tags.join(' ')} ${res.summary}`.toLowerCase();
-    return (
+  let matched = INITIAL_RESOURCES.filter((res: Resource) => {
+    const searchSpace = `${res.title} ${res.subject} ${(res.tags || []).join(' ')} ${res.summary}`.toLowerCase();
+    const branchMatches = branch === 'All' || res.branch === branch;
+    const yearMatches = year === 'All' || res.year === year;
+
+    const queryMatches = (
       searchSpace.includes(q) ||
-      (q.includes('dsa') && searchSpace.includes('dsa')) ||
-      (q.includes('m1') && searchSpace.includes('m1')) ||
-      (q.includes('math') && searchSpace.includes('mathematics')) ||
-      (q.includes('bee') && searchSpace.includes('bee')) ||
+      (q.includes('dsa') && searchSpace.includes('data')) ||
+      (q.includes('m1') && searchSpace.includes('math')) ||
+      (q.includes('os') && searchSpace.includes('operating')) ||
+      (q.includes('dbms') && searchSpace.includes('database')) ||
       (q.includes('electrical') && searchSpace.includes('electrical')) ||
-      (q.includes('physics') && searchSpace.includes('physics')) ||
-      (q.includes('python') && searchSpace.includes('python')) ||
-      (q.includes('digital') && searchSpace.includes('digital'))
+      (q.includes('physics') && searchSpace.includes('physics'))
     );
+
+    return branchMatches && yearMatches && queryMatches;
   });
 
   if (matched.length === 0) {
-    // Return top approved resources as helpful recommendations
-    matched = INITIAL_RESOURCES.filter((r) => r.approved).slice(0, 2);
+    matched = INITIAL_RESOURCES.filter((r: Resource) => r.status === 'approved').slice(0, 2);
   }
 
   return matched;
@@ -206,7 +207,7 @@ export function getAssistantResponse(
 ): Omit<ChatMessage, 'id' | 'timestamp'> {
   const query = userQuery.toLowerCase().trim();
 
-  // SCENARIO 1: Specific PDF Summarization (Stretch Goal: Ask Specific PDF)
+  // SCENARIO 1: Specific PDF Summarization
   if (
     contextResource &&
     (query.includes('summarize') ||
@@ -217,9 +218,7 @@ export function getAssistantResponse(
       query.includes('pdf in 3 bullet points'))
   ) {
     const summary = generatePdfSummary(contextResource);
-
-    // Subject keywords for accompanying videos
-    const subjectKeywords = [contextResource.subject, ...contextResource.tags];
+    const subjectKeywords = [contextResource.subject, ...(contextResource.tags || [])];
     const relatedVideos = filterVideoLectures(subjectKeywords, languageFilter);
 
     return {
@@ -232,14 +231,14 @@ Here is a concise **3-bullet point breakdown** and **key exam takeaways** synthe
 * **Pedagogical Alignment:** ${summary.summaryBullets[1]}
 * **Exam Relevance:** ${summary.summaryBullets[2]}
 
-Below you will find the interactive summary card with high-weightage topics and recommended video tutorials to cement your understanding:`,
+Below you will find the interactive summary card with high-weightage topics and recommended video tutorials:`,
       matchedResources: [contextResource],
       pdfSummary: summary,
       videoLectures: relatedVideos.slice(0, 3),
     };
   }
 
-  // SCENARIO 2: If context resource is active and user asks a generic question about it
+  // SCENARIO 2: Context resource active
   if (contextResource && !query.includes('2-week') && !query.includes('roadmap')) {
     const summary = generatePdfSummary(contextResource);
     return {
@@ -264,10 +263,7 @@ Regarding your query on **${userQuery}** using **${contextResource.title}**:
     query.includes('freshman') ||
     query.includes('focus on')
   ) {
-    const m1Res = INITIAL_RESOURCES.find((r) => r.id === 'res-m1-02');
-    const beeRes = INITIAL_RESOURCES.find((r) => r.id === 'res-bee-03');
-    const pyRes = INITIAL_RESOURCES.find((r) => r.id === 'res-py-05');
-    const recommendedResources = [m1Res, beeRes, pyRes].filter(Boolean) as Resource[];
+    const recommendedResources = INITIAL_RESOURCES.filter((r: Resource) => r.year === '1st Year' || r.year === '2nd Year').slice(0, 3);
 
     return {
       sender: 'assistant',
@@ -275,17 +271,15 @@ Regarding your query on **${userQuery}** using **${contextResource.title}**:
 Welcome to your engineering journey! The first year builds the structural foundation for your entire academic and career trajectory. Here is how to prioritize:
 
 1. **Maintain a Strong CGPA (Target 8.5+) early on:**
-   * Subjects like **Engineering Mathematics (M1)** and **Basic Electrical Engineering (BEE)** carry 4 credits each. High grades here create a cushion for subsequent tougher semesters.
+   * Subjects like **Engineering Mathematics (M1)** and **Basic Electrical Engineering (BEE)** carry 4 credits each.
 2. **Master One Core Programming Language:**
-   * Don't jump across 5 technologies. Get rock-solid with **C** or **Python**—understand data types, memory, loops, and basic functions.
+   * Get rock-solid with **C** or **Python**—understand data types, memory, loops, and basic functions.
 3. **Build Consistent Habit with Handwritten Notes & PYQs:**
-   * 70% of semester exams test high-frequency concepts from the last 3-5 years. Revise weekly rather than pulling all-nighters.
-4. **Join 1 Technical Club & 1 Cultural Club:**
-   * Networking with seniors is how you discover hackathons, internships, and resource drives.
+   * 70% of semester exams test high-frequency concepts from the last 3-5 years.
 
-Here are the **top faculty-approved notes** and **recommended introductory video lectures** across English, Hindi, and Telugu:`,
+Here are the **top faculty-approved notes** and **recommended video tutorials** across English, Hindi, and Telugu:`,
       matchedResources: recommendedResources,
-      videoLectures: filterVideoLectures(['m1', 'bee', 'python'], languageFilter).slice(0, 3),
+      videoLectures: filterVideoLectures(['m1', 'bee', 'python', 'dsa'], languageFilter).slice(0, 3),
     };
   }
 
@@ -296,7 +290,7 @@ Here are the **top faculty-approved notes** and **recommended introductory video
     query.includes('from scratch') ||
     query.includes('prepare for dsa')
   ) {
-    const dsaRes = INITIAL_RESOURCES.find((r) => r.id === 'res-dsa-01');
+    const dsaRes = INITIAL_RESOURCES.find((r: Resource) => r.subject === 'Data Structures');
     const matchingVideos = filterVideoLectures(['dsa', 'data structures'], languageFilter);
 
     return {
@@ -305,94 +299,44 @@ Here are the **top faculty-approved notes** and **recommended introductory video
 Preparing for Data Structures & Algorithms requires a balance between theoretical intuition and disciplined problem-solving:
 
 1. **Step 1: Pick One Language (C++, Java, or Python)**
-   * Learn the Standard Template Library (STL / Collections). Never switch languages midway.
+   * Master standard libraries (STL / Collections).
 2. **Step 2: Linear Data Structures (Weeks 1–3)**
-   * Arrays, Dynamic Arrays, Linked Lists (Singly, Doubly, Fast & Slow pointers), Stacks & Queues.
+   * Arrays, Linked Lists, Stacks & Queues.
 3. **Step 3: Algorithmic Paradigms (Weeks 4–6)**
-   * Recursion, Backtracking, Binary Search (on arrays and answer spaces), Two Pointers & Sliding Window.
+   * Recursion, Binary Search, Two Pointers & Sliding Window.
 4. **Step 4: Non-Linear & Hierarchical Structures (Weeks 7–10)**
-   * Binary Trees, Binary Search Trees (BST), Heaps / Priority Queues, and Graph Traversals (BFS/DFS, Topological Sort, Dijkstra).
-5. **Practice Strategy:**
-   * Solve 3–5 problems daily on LeetCode/GeeksforGeeks following the **Striver A2Z Sheet** or **NeetCode Blind 75**.
+   * Binary Trees, BSTs, Heaps, and Graph Traversals (BFS/DFS, Dijkstra).
 
-Check out the **DSA Complete Notes** and **Curated Multilingual Video Tutorials** below (toggle between English, Hindi, and Telugu):`,
+Check out the **DSA Complete Notes** and **Curated Multilingual Video Tutorials** below:`,
       matchedResources: dsaRes ? [dsaRes] : [],
       videoLectures: matchingVideos.slice(0, 4),
     };
   }
 
-  // SCENARIO 5: "🎥 Show M1 video lectures in Telugu & Hindi" or M1 queries
-  if (
-    query.includes('m1') ||
-    query.includes('mathematics') ||
-    query.includes('matrices') ||
-    query.includes('eigenvalue') ||
-    (query.includes('video') && (query.includes('telugu') || query.includes('hindi')))
-  ) {
-    const m1Res = INITIAL_RESOURCES.find((r) => r.id === 'res-m1-02');
-    const m1Videos = filterVideoLectures(['m1', 'matrices', 'calculus'], languageFilter);
-
-    return {
-      sender: 'assistant',
-      content: `### 🎥 Curated Multilingual Video Lectures: Engineering Mathematics - I (M1)
-Engineering Mathematics (M1) is concept-heavy with high credit weightage. Here are verified video lectures taught in **Telugu, Hindi, and English** by renowned educators:
-
-* **Telugu Lectures:** Step-by-step explanations covering JNTU/VTU/OU syllabi by *Harsha Tech* and *Telugu Engineering Tutorials*.
-* **Hindi Lectures:** Comprehensive one-shot matrix modules by *Pradeep Giri Academy* and *Last Moment Tuitions*.
-* **English Lectures:** Visual conceptual mastery by *Dr. Gajendra Purohit* and *Neso Academy*.
-
-Accompanying handwritten formula notes with solved Cayley-Hamilton and Eigenvalue derivations are attached below:`,
-      matchedResources: m1Res ? [m1Res] : [],
-      videoLectures: m1Videos,
-    };
-  }
-
-  // SCENARIO 6: "📅 Generate a 2-week exam preparation plan" or Exam Prep Roadmap
+  // SCENARIO 5: 2-week exam preparation plan
   if (
     query.includes('2-week') ||
     query.includes('exam preparation') ||
     query.includes('study plan') ||
     query.includes('roadmap') ||
-    query.includes('exam prep') ||
     query.includes('schedule') ||
     query.includes('midterm')
   ) {
     const roadmap = generateTwoWeekStudyRoadmap('Engineering Semester & Midterm Examinations');
-    const dsaRes = INITIAL_RESOURCES.find((r) => r.id === 'res-dsa-01');
-    const m1Res = INITIAL_RESOURCES.find((r) => r.id === 'res-m1-02');
+    const resourcesList = INITIAL_RESOURCES.slice(0, 2);
 
     return {
       sender: 'assistant',
       content: `### 📅 Interactive 2-Week Exam Preparation Roadmap
 I have generated a high-yield, structured 14-day study plan calibrated for your upcoming semester examinations.
 
-* **Phase 1 (Days 1–7):** Focus on Unit 1–3 foundational concepts, high-scoring derivations, and concise formula sheets.
+* **Phase 1 (Days 1–7):** Focus on foundational concepts, high-scoring derivations, and concise formula sheets.
 * **Phase 2 (Days 8–14):** Timed past 5-year PYQ solving, error analysis, and presentation drills.
 
 Use the **interactive checklist tabs** below to track your progress daily:`,
       studyRoadmap: roadmap,
-      matchedResources: [dsaRes, m1Res].filter(Boolean) as Resource[],
+      matchedResources: resourcesList,
       videoLectures: filterVideoLectures(['m1', 'dsa'], languageFilter).slice(0, 3),
-    };
-  }
-
-  // SCENARIO 7: Basic Electrical Engineering (BEE)
-  if (query.includes('bee') || query.includes('electrical') || query.includes('kcl') || query.includes('kvl') || query.includes('transformer')) {
-    const beeRes = INITIAL_RESOURCES.find((r) => r.id === 'res-bee-03');
-    const beeVideos = filterVideoLectures(['bee', 'electrical', 'kcl', 'transformers'], languageFilter);
-
-    return {
-      sender: 'assistant',
-      content: `### ⚡ Basic Electrical Engineering (BEE) Guidance
-BEE can feel challenging due to circuit calculations and sign conventions. Key strategies to score high:
-
-1. **Master KCL & KVL Mesh/Nodal Equations:** Standardize your sign convention (entering positive, leaving negative).
-2. **AC Fundamentals & Star-Delta:** Derivations of line voltage vs phase voltage ($V_L = \\sqrt{3}V_{ph}$) always carry 10 marks.
-3. **Transformers & DC Machines:** Draw clean schematic diagrams showing flux linkages and winding turns.
-
-Verified faculty question bank and multilingual video tutorials are attached below:`,
-      matchedResources: beeRes ? [beeRes] : [],
-      videoLectures: beeVideos,
     };
   }
 
@@ -407,8 +351,8 @@ Verified faculty question bank and multilingual video tutorials are attached bel
 Here is targeted guidance regarding **"${userQuery}"**:
 
 * **Recommended Strategy:** Start with the verified faculty notes in the resource library to establish syllabus boundaries.
-* **Exam Practice:** Review previous year university questions (PYQs) to identify recurring 10-mark and 15-mark questions.
-* **Multimedia Learning:** Watch concept walkthroughs in your preferred language (English, Hindi, or Telugu) to resolve any difficult doubts.
+* **Exam Practice:** Review previous year university questions (PYQs) to identify recurring 10-mark questions.
+* **Multimedia Learning:** Watch concept walkthroughs in your preferred language (English, Hindi, or Telugu) to resolve difficult doubts.
 
 Below are the most relevant academic resources and curated video lectures matched to your query:`,
     matchedResources: matches.slice(0, 2),

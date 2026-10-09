@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { INITIAL_RESOURCES, Resource } from '../../data/mockData';
-import {
+import { INITIAL_RESOURCES, type Resource } from '../../data/mockData';
+import type {
   ChatMessage,
   LanguageFilter,
   BranchFilter,
   YearFilter,
-  VideoLecture,
 } from './types';
 import { getAssistantResponse } from './assistantResponses';
 import { VideoLectureCard } from './VideoLectureCard';
@@ -23,32 +22,33 @@ import {
   Youtube,
   ChevronDown,
   BookOpen,
-  Filter,
   GraduationCap,
   X,
   ThumbsUp,
   ThumbsDown,
   Bot,
   User,
-  Calendar,
-  Flame,
   CheckCircle,
 } from './icons';
 
 interface CampusAssistantProps {
   initialBranch?: BranchFilter;
   initialYear?: YearFilter;
+  selectedBranch?: BranchFilter;
+  selectedYear?: YearFilter;
   className?: string;
 }
 
 export const CampusAssistant: React.FC<CampusAssistantProps> = ({
   initialBranch = 'CSE',
   initialYear = '1st Year',
+  selectedBranch: propBranch,
+  selectedYear: propYear,
   className = '',
 }) => {
   // Student Profile State
-  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>(initialBranch);
-  const [selectedYear, setSelectedYear] = useState<YearFilter>(initialYear);
+  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>(propBranch || initialBranch);
+  const [selectedYear, setSelectedYear] = useState<YearFilter>(propYear || initialYear);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   // Language Filter State: 'all' | 'english' | 'hindi' | 'telugu'
@@ -715,7 +715,7 @@ I am ready for your next question! Ask about specific subjects (**DSA, M1, BEE, 
                     🌐 General Guidance (Search across all notes)
                   </button>
 
-                  {INITIAL_RESOURCES.map((res) => {
+                  {INITIAL_RESOURCES.map((res: Resource) => {
                     const isSelected = selectedContextResource?.id === res.id;
                     return (
                       <button

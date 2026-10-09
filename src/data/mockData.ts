@@ -1,295 +1,264 @@
 export type Branch = 'CSE' | 'ECE' | 'MECH' | 'CIVIL';
 export type Year = '1st Year' | '2nd Year' | '3rd Year' | '4th Year';
-export type ResourceStatus = 'pending' | 'approved' | 'rejected';
-export type ResourceCategory = 'Notes' | 'PYQ' | 'Syllabus' | 'Reference' | 'CheatSheet';
+export type ResourceStatus = 'approved' | 'pending' | 'rejected';
 
 export interface Resource {
   id: string;
   title: string;
   subject: string;
-  category: ResourceCategory;
   branch: Branch;
   year: Year;
-  semester: number;
-  format: 'PDF' | 'DOCX' | 'ZIP';
-  fileSize: string;
   fileUrl: string;
-  downloadUrl: string;
   uploadedBy: string;
-  uploadDate: string;
-  downloads: number;
   status: ResourceStatus;
   upvotes: number;
-  approved: boolean;
   summary: string;
-  keyTakeaways: string[];
-  tags: string[];
+  // Optional metadata extensions
+  format?: string;
+  fileSize?: string;
+  downloads?: number;
+  approved?: boolean;
+  tags?: string[];
+  keyTakeaways?: string[];
+  createdAt?: string;
 }
 
-export const BRANCH_OPTIONS: Branch[] = ['CSE', 'ECE', 'MECH', 'CIVIL'];
-export const YEAR_OPTIONS: Year[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+export const BRANCHES: Branch[] = ['CSE', 'ECE', 'MECH', 'CIVIL'];
+export const YEARS: Year[] = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
-export const INITIAL_RESOURCES: Resource[] = [
+export const SUBJECTS: Record<Branch, string[]> = {
+  CSE: ['Data Structures', 'Operating Systems', 'DBMS', 'Computer Networks', 'Machine Learning', 'Web Development', 'Discrete Mathematics'],
+  ECE: ['Signal Processing', 'VLSI Design', 'Embedded Systems', 'Communication Theory', 'Analog Circuits', 'Digital Electronics'],
+  MECH: ['Thermodynamics', 'Fluid Mechanics', 'Machine Design', 'Manufacturing Processes', 'Heat Transfer', 'Theory of Machines'],
+  CIVIL: ['Structural Analysis', 'Geotechnical Engineering', 'Surveying', 'Concrete Technology', 'Environmental Engineering', 'Transportation'],
+};
+
+export const mockResources: Resource[] = [
   {
-    id: 'res-dsa-01',
-    title: 'Data Structures & Algorithms - Complete Visual Notes & LeetCode Patterns',
-    subject: 'Data Structures & Algorithms',
-    category: 'Notes',
+    id: '1',
+    title: 'Data Structures & Algorithms Complete Notes',
+    subject: 'Data Structures',
     branch: 'CSE',
     year: '2nd Year',
-    semester: 3,
-    format: 'PDF',
-    fileSize: '4.8 MB',
-    fileUrl: 'https://example.com/resources/cse-dsa-visual-guide.pdf',
-    downloadUrl: 'https://example.com/resources/cse-dsa-visual-guide.pdf',
-    uploadedBy: 'Aarav Sharma (Senior, 4th Year)',
-    uploadDate: '2026-08-15',
-    downloads: 1420,
+    fileUrl: '#',
+    uploadedBy: 'Prof. Linda Wright',
     status: 'approved',
-    upvotes: 388,
-    approved: true,
-    summary: 'Comprehensive classroom and revision notes covering Arrays, Linked Lists, Stacks, Queues, Binary Trees, BSTs, Graphs (BFS/DFS, Dijkstra), and Dynamic Programming with time & space complexity analysis.',
-    keyTakeaways: [
-      'Master Big-O asymptotic analysis and space complexity tradeoffs.',
-      'Understand recurring tree traversals (Inorder, Preorder, Postorder) and AVL rotations.',
-      'Core graph algorithms: Dijkstra, Prim\'s, and Kruskal\'s are guaranteed 15-mark semester exam questions.',
-      'Includes 50+ solved LeetCode patterns frequently asked in campus placements.'
-    ],
-    tags: ['dsa', 'trees', 'graphs', 'algorithms', 'cse', 'placement']
-  },
-  {
-    id: 'res-m1-02',
-    title: 'Engineering Mathematics - I (M1) Handwritten Complete Notes & Formulas',
-    subject: 'Engineering Mathematics - I',
-    category: 'Notes',
-    branch: 'CSE',
-    year: '1st Year',
-    semester: 1,
+    upvotes: 89,
+    summary: 'Comprehensive semester notes covering balanced BSTs, graph traversal algorithms (BFS/DFS), shortest paths, and dynamic programming.',
     format: 'PDF',
-    fileSize: '6.2 MB',
-    fileUrl: 'https://example.com/resources/m1-handwritten-notes.pdf',
-    downloadUrl: 'https://example.com/resources/m1-handwritten-notes.pdf',
-    uploadedBy: 'Prof. K. Venkat (Senior Faculty)',
-    uploadDate: '2026-09-01',
-    downloads: 2150,
-    status: 'approved',
-    upvotes: 512,
-    approved: true,
-    summary: 'Curated student handwritten notes with step-by-step solved problems on Matrices (Rank, Eigenvalues, Cayley-Hamilton theorem), Differential Calculus, Taylor Series, and Multiple Integrals with exam tips.',
-    keyTakeaways: [
-      'Eigenvalues & Eigenvectors and Cayley-Hamilton theorem consistently cover 20+ marks.',
-      'Formula cheat sheet for Jacobians, Maxima & Minima of two variables.',
-      'Step-by-step shortcuts to evaluate double and triple integrals without calculation errors.',
-      'Annotated with high-frequency previous 5-year exam question patterns.'
-    ],
-    tags: ['m1', 'math', 'matrices', 'calculus', 'first-year', 'eigenvalues']
-  },
-  {
-    id: 'res-os-03',
-    title: 'Operating Systems - Concurrency, Scheduling & Memory Paging Manual',
-    subject: 'Operating Systems',
-    category: 'Notes',
-    branch: 'CSE',
-    year: '3rd Year',
-    semester: 5,
-    format: 'PDF',
-    fileSize: '3.9 MB',
-    fileUrl: 'https://example.com/resources/os-concurrency-cheatsheet.pdf',
-    downloadUrl: 'https://example.com/resources/os-concurrency-cheatsheet.pdf',
-    uploadedBy: 'Prof. S. Ranganathan',
-    uploadDate: '2026-08-25',
-    downloads: 1290,
-    status: 'approved',
-    upvotes: 98,
-    approved: true,
-    summary: 'Detailed explanation of Peterson algorithm, semaphores, deadlock detection algorithms, and virtual memory page replacement policies with previous year university questions.',
-    keyTakeaways: [
-      'Deadlock prevention vs avoidance (Banker\'s algorithm) step-by-step.',
-      'CPU Scheduling gantt charts for Round Robin and Multi-level feedback queues.',
-      'Page fault rate calculation and LRU/FIFO comparative proofs.'
-    ],
-    tags: ['os', 'operating systems', 'concurrency', 'paging', 'cse']
-  },
-  {
-    id: 'res-dsp-04',
-    title: 'Digital Signal Processing - FFT & IIR/FIR Filter Design Question Bank',
-    subject: 'Digital Signal Processing',
-    category: 'Reference',
-    branch: 'ECE',
-    year: '3rd Year',
-    semester: 5,
-    format: 'PDF',
-    fileSize: '4.5 MB',
-    fileUrl: 'https://example.com/resources/ece-dsp-filter-design.pdf',
-    downloadUrl: 'https://example.com/resources/ece-dsp-filter-design.pdf',
-    uploadedBy: 'Neha Verma (TA, ECE)',
-    uploadDate: '2026-08-18',
-    downloads: 780,
-    status: 'approved',
-    upvotes: 76,
-    approved: true,
-    summary: 'Step-by-step derivations of Radix-2 DIT/DIF FFT algorithms, Butterworth filter design formulas, bilinear transformation methods, and MATLAB code samples.',
-    keyTakeaways: [
-      'Radix-2 butterfly signal flow graphs for 8-point sequences.',
-      'Bilinear transformation bilinear mapping distortion and pre-warping.',
-      'Chebyshev Type I and II filter frequency response characteristics.'
-    ],
-    tags: ['dsp', 'signals', 'fft', 'filters', 'ece']
-  },
-  {
-    id: 'res-bee-05',
-    title: 'Basic Electrical Engineering (BEE) Solved Question Bank',
-    subject: 'Basic Electrical Engineering',
-    category: 'PYQ',
-    branch: 'ECE',
-    year: '1st Year',
-    semester: 1,
-    format: 'PDF',
-    fileSize: '3.4 MB',
-    fileUrl: 'https://example.com/resources/bee-question-bank.pdf',
-    downloadUrl: 'https://example.com/resources/bee-question-bank.pdf',
-    uploadedBy: 'Academic Cell',
-    uploadDate: '2026-08-20',
-    downloads: 1180,
-    status: 'approved',
-    upvotes: 245,
-    approved: true,
-    summary: 'Topic-wise solved question bank containing KCL/KVL mesh analysis, AC fundamentals (phasors, power factor), DC Machines, Transformers, and Three-Phase circuits with labeled circuit diagrams.',
-    keyTakeaways: [
-      'Node & Mesh analysis are foundational—master sign conventions first.',
-      'Transformer equivalent circuits and efficiency equations are top exam favorites.',
-      '3-Phase star and delta relationship derivations yield guaranteed full scores.'
-    ],
-    tags: ['bee', 'electrical', 'kcl', 'kvl', 'transformers', 'first-year']
-  },
-  {
-    id: 'res-thermo-06',
-    title: 'Thermodynamics & Heat Transfer - Formula Pocketbook & Solved Numericals',
-    subject: 'Thermodynamics',
-    category: 'CheatSheet',
-    branch: 'MECH',
-    year: '2nd Year',
-    semester: 3,
-    format: 'PDF',
-    fileSize: '3.7 MB',
-    fileUrl: 'https://example.com/resources/mech-thermo-handbook.pdf',
-    downloadUrl: 'https://example.com/resources/mech-thermo-handbook.pdf',
-    uploadedBy: 'Vikram Joshi (Senior, MECH)',
-    uploadDate: '2026-09-02',
-    downloads: 910,
-    status: 'approved',
-    upvotes: 115,
-    approved: true,
-    summary: 'All first and second law derivations, Carnot cycle analysis, steam table usage guidelines, and transient heat conduction numerical problems with detailed solutions.',
-    keyTakeaways: [
-      'First and second laws of thermodynamics closed vs open system equations.',
-      'Mollier diagram enthalpy-entropy state determinations.',
-      'One-dimensional Fourier conduction with convective boundary conditions.'
-    ],
-    tags: ['thermodynamics', 'heat transfer', 'carnot', 'mech']
-  },
-  {
-    id: 'res-struct-07',
-    title: 'Structural Analysis II - Moment Distribution & Slope Deflection Solved Examples',
-    subject: 'Structural Engineering',
-    category: 'PYQ',
-    branch: 'CIVIL',
-    year: '3rd Year',
-    semester: 5,
-    format: 'PDF',
-    fileSize: '5.2 MB',
-    fileUrl: 'https://example.com/resources/civil-structural-analysis-2.pdf',
-    downloadUrl: 'https://example.com/resources/civil-structural-analysis-2.pdf',
-    uploadedBy: 'Pooja Kulkarni (3rd Year, CIVIL)',
-    uploadDate: '2026-09-12',
+    fileSize: '4.2 MB',
     downloads: 320,
-    status: 'pending',
-    upvotes: 12,
-    approved: false,
-    summary: 'Collection of 20+ past semester solved questions on continuous beams, non-sway portal frames using Hardy Cross moment distribution method with step-by-step free body diagrams.',
+    approved: true,
+    tags: ['Trees', 'Graphs', 'Big-O', 'Algorithms'],
     keyTakeaways: [
-      'Continuous beam carryover factor and distribution factor rules.',
-      'Sway analysis equations for asymmetric portal frames.',
-      'Matrix stiffness approach formulation for plane trusses.'
-    ],
-    tags: ['structures', 'civil', 'beams', 'frames', 'hardy-cross']
+      'Master Theorem case 2 applies when f(n) = Theta(n^(log_b a))',
+      'AVL Trees maintain balance factor in {-1, 0, +1}',
+      'Dijkstra operates in O((V + E) log V) with min-heap priority queue'
+    ]
   },
   {
-    id: 'res-micro-08',
-    title: 'Microprocessors & Microcontrollers (8086/8051) Lab Manual with Assembly Code',
-    subject: 'Microprocessors',
-    category: 'Notes',
-    branch: 'ECE',
-    year: '2nd Year',
-    semester: 4,
-    format: 'PDF',
-    fileSize: '2.8 MB',
-    fileUrl: 'https://example.com/resources/ece-8086-lab-manual.pdf',
-    downloadUrl: 'https://example.com/resources/ece-8086-lab-manual.pdf',
-    uploadedBy: 'Devendra Patel (2nd Year, ECE)',
-    uploadDate: '2026-09-15',
-    downloads: 145,
-    status: 'pending',
-    upvotes: 8,
-    approved: false,
-    summary: 'Verified MASM code listings for string manipulation, sorting, 8255 PPI interfacing, and 8051 timer configuration experiments with wiring diagrams and register maps.',
-    keyTakeaways: [
-      '8086 segment register addressing modes and physical memory calculations.',
-      'Interrupt vector table (IVT) mapping and hardware ISR programming.',
-      '8051 SFR timer mode 1 and mode 2 baud rate generator routines.'
-    ],
-    tags: ['microprocessors', '8086', '8051', 'assembly', 'ece']
-  },
-  {
-    id: 'res-ml-09',
-    title: 'Applied Machine Learning & Deep Learning - Midterm Notes & PyTorch Cheatsheet',
-    subject: 'Machine Learning',
-    category: 'CheatSheet',
+    id: '2',
+    title: 'Operating Systems Architecture & CPU Scheduling',
+    subject: 'Operating Systems',
     branch: 'CSE',
-    year: '4th Year',
-    semester: 7,
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Dr. Marcus Vane',
+    status: 'approved',
+    upvotes: 64,
+    summary: 'Detailed explanation of FCFS, SJF, Round Robin, Banker\'s algorithm, and semaphore sync mechanisms with step-by-step Gantt charts.',
+    format: 'PDF',
+    fileSize: '3.8 MB',
+    downloads: 210,
+    approved: true,
+    tags: ['Processes', 'Scheduling', 'Deadlock', 'Memory'],
+    keyTakeaways: [
+      'Round-Robin time slice determines response vs context switch overhead',
+      'Banker\'s Algorithm verifies safe sequence before allocation',
+      'Page fault rate decreases with working set model caching'
+    ]
+  },
+  {
+    id: '3',
+    title: 'Database Management Systems & SQL Normalization',
+    subject: 'DBMS',
+    branch: 'CSE',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Prof. Rachel Evans',
+    status: 'approved',
+    upvotes: 78,
+    summary: 'Step-by-step normalization (1NF–BCNF), relational algebra, transaction ACID properties, indexing, and SQL join queries.',
+    format: 'PDF',
+    fileSize: '5.1 MB',
+    downloads: 280,
+    approved: true,
+    tags: ['SQL', 'BCNF', 'ACID', 'Transactions'],
+    keyTakeaways: [
+      '1NF requires atomic values; 2NF eliminates partial functional dependencies',
+      '3NF eliminates transitive dependencies; BCNF requires superkeys on LHS',
+      'Two-Phase Locking (2PL) guarantees conflict serializability'
+    ]
+  },
+  {
+    id: '4',
+    title: 'Discrete Math & Logic Theory Handout',
+    subject: 'Discrete Mathematics',
+    branch: 'CSE',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Dr. Kenneth Cho',
+    status: 'approved',
+    upvotes: 45,
+    summary: 'Propositional calculus, predicate logic, recurrence relations, graph isomorphism, and combinatorics problem sets.',
+    format: 'PDF',
+    fileSize: '2.9 MB',
+    downloads: 165,
+    approved: true,
+    tags: ['Logic', 'Graphs', 'Combinatorics'],
+    keyTakeaways: [
+      'Pigeonhole Principle applies to hash collision lower bounds',
+      'Eulerian graph exists iff all vertices have even degree'
+    ]
+  },
+  {
+    id: '5',
+    title: 'Web Development & Modern REST APIs',
+    subject: 'Web Development',
+    branch: 'CSE',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Alex Morgan',
+    status: 'approved',
+    upvotes: 52,
+    summary: 'Comprehensive handbook for React, Node.js backend architecture, authentication, and state management patterns.',
     format: 'PDF',
     fileSize: '6.4 MB',
-    fileUrl: 'https://example.com/resources/cse-ml-dl-handbook.pdf',
-    downloadUrl: 'https://example.com/resources/cse-ml-dl-handbook.pdf',
-    uploadedBy: 'Rohan Mehra (Research Scholar)',
-    uploadDate: '2026-09-18',
-    downloads: 680,
-    status: 'pending',
-    upvotes: 34,
-    approved: false,
-    summary: 'Theoretical foundations of gradient descent, backpropagation, CNN architectures (ResNet, VGG), and Transformer self-attention mechanism with PyTorch training loops.',
-    keyTakeaways: [
-      'Loss backpropagation matrix calculus and vanishing gradient remedies.',
-      'Residual skip connection derivations and spatial dimension reduction.',
-      'Scaled dot-product attention equation and multi-head projection layers.'
-    ],
-    tags: ['machine-learning', 'deep-learning', 'pytorch', 'transformers', 'cse']
+    downloads: 290,
+    approved: true,
+    tags: ['React', 'Node.js', 'REST', 'TypeScript']
   },
   {
-    id: 'res-survey-10',
-    title: 'Surveying & Geomatics - Total Station & GPS Surveying Quick Reference',
-    subject: 'Surveying',
-    category: 'Reference',
-    branch: 'CIVIL',
-    year: '1st Year',
-    semester: 2,
-    format: 'PDF',
-    fileSize: '3.1 MB',
-    fileUrl: 'https://example.com/resources/civil-surveying-notes.pdf',
-    downloadUrl: 'https://example.com/resources/civil-surveying-notes.pdf',
-    uploadedBy: 'Kavita Sundaram (1st Year, CIVIL)',
-    uploadDate: '2026-08-30',
-    downloads: 510,
+    id: '6',
+    title: 'Computer Networks — TCP/IP & Protocol Stacks',
+    subject: 'Computer Networks',
+    branch: 'CSE',
+    year: '3rd Year',
+    fileUrl: '#',
+    uploadedBy: 'Divya Nair',
     status: 'approved',
-    upvotes: 54,
+    upvotes: 91,
+    summary: 'Layer-by-layer breakdown of TCP/IP vs OSI model, CIDR subnetting, BGP/OSPF routing, and TLS handshakes.',
+    format: 'PDF',
+    fileSize: '4.8 MB',
+    downloads: 340,
     approved: true,
-    summary: 'Basic principles of leveling, theodolite traversing, curve setting, and modern total station error adjustment techniques for engineering surveying field work.',
-    keyTakeaways: [
-      'Two-peg test procedure and collimation error determination.',
-      'Bowditch and Transit methods for compass traverse adjustment.',
-      'Total station prism constant and atmospheric correction parameters.'
-    ],
-    tags: ['surveying', 'geomatics', 'total-station', 'civil', 'first-year']
+    tags: ['TCP/IP', 'Routing', 'Security']
+  },
+  {
+    id: '7',
+    title: 'Machine Learning — Regression, SVM & Neural Nets',
+    subject: 'Machine Learning',
+    branch: 'CSE',
+    year: '4th Year',
+    fileUrl: '#',
+    uploadedBy: 'Sneha Patel',
+    status: 'approved',
+    upvotes: 114,
+    summary: 'Supervised & unsupervised learning, gradient descent, loss landscapes, CNNs, and evaluation metrics with Python examples.',
+    format: 'PDF',
+    fileSize: '7.2 MB',
+    downloads: 510,
+    approved: true,
+    tags: ['Neural Nets', 'SVM', 'Python']
+  },
+  {
+    id: '8',
+    title: 'Signal Processing — Fourier Transforms & Filtering',
+    subject: 'Signal Processing',
+    branch: 'ECE',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Rohit Kapoor',
+    status: 'approved',
+    upvotes: 58,
+    summary: 'Continuous and discrete Fourier transforms, DFT, FFT, Z-transforms, and digital FIR/IIR filter design methodologies.',
+    format: 'PDF',
+    fileSize: '3.5 MB',
+    downloads: 180,
+    approved: true,
+    tags: ['FFT', 'Filters', 'Signals']
+  },
+  {
+    id: '9',
+    title: 'VLSI Design — CMOS Logic Families & Layouts',
+    subject: 'VLSI Design',
+    branch: 'ECE',
+    year: '3rd Year',
+    fileUrl: '#',
+    uploadedBy: 'Vikram Joshi',
+    status: 'approved',
+    upvotes: 49,
+    summary: 'CMOS inverter DC characteristics, stick diagrams, Euler paths, RC delay modeling, and layout design rules.',
+    format: 'PDF',
+    fileSize: '4.1 MB',
+    downloads: 140,
+    approved: true,
+    tags: ['CMOS', 'Layouts', 'VLSI']
+  },
+  {
+    id: '10',
+    title: 'Thermodynamics — Zeroth to Third Law Applications',
+    subject: 'Thermodynamics',
+    branch: 'MECH',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Neha Gupta',
+    status: 'approved',
+    upvotes: 62,
+    summary: 'Carnot heat engines, entropy derivations, Rankine & Brayton power cycles, and steam tables numerical solutions.',
+    format: 'PDF',
+    fileSize: '3.9 MB',
+    downloads: 195,
+    approved: true,
+    tags: ['Entropy', 'Carnot', 'Cycles']
+  },
+  {
+    id: '11',
+    title: 'Structural Analysis — Truss Analysis & Deflections',
+    subject: 'Structural Analysis',
+    branch: 'CIVIL',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Anita Deshmukh',
+    status: 'approved',
+    upvotes: 47,
+    summary: 'Method of joints, method of sections, Castigliano\'s theorem, and influence line diagrams for determinate structures.',
+    format: 'PDF',
+    fileSize: '4.4 MB',
+    downloads: 130,
+    approved: true,
+    tags: ['Trusses', 'Deflections', 'Structures']
+  },
+  {
+    id: '12',
+    title: 'Fluid Mechanics — Bernoulli & Navier-Stokes',
+    subject: 'Fluid Mechanics',
+    branch: 'MECH',
+    year: '2nd Year',
+    fileUrl: '#',
+    uploadedBy: 'Amit Rao',
+    status: 'approved',
+    upvotes: 53,
+    summary: 'Fluid statics, continuity equation, Bernoulli applications in venturimeters, and boundary layer theory.',
+    format: 'PDF',
+    fileSize: '3.7 MB',
+    downloads: 170,
+    approved: true,
+    tags: ['Bernoulli', 'Navier-Stokes', 'Fluids']
   }
 ];
+
+export const INITIAL_RESOURCES = mockResources;
+export const BRANCH_OPTIONS = BRANCHES;
+export const YEAR_OPTIONS = YEARS;

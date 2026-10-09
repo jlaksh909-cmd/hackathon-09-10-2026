@@ -40,6 +40,18 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+// ── Global Error & Bad JSON Handler ──
+app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in err) {
+    return res.status(400).json({ error: 'Malformed JSON payload received' });
+  }
+  console.error('Unhandled server error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(500).json({ error: 'Internal Server Error' });
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 CampusHub Backend Server running on http://localhost:${PORT}`);
   console.log(`📚 API available at http://localhost:${PORT}/api/resources`);

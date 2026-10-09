@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* ── CampusHub Apple & Notion Minimalist Design DNA ── */
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --color-primary: #18181b;
+  --color-primary-accent: #4f46e5;
+  --color-canvas: #fbfbfd;
+  --color-surface-card: #ffffff;
+  --color-border-subtle: rgba(0, 0, 0, 0.07);
+  --color-border-hover: rgba(0, 0, 0, 0.14);
+
+  --color-text-title: #09090b;
+  --color-text-body: #3f3f46;
+  --color-text-muted: #71717a;
+  --color-text-faint: #a1a1aa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fbfbfd;
+  color: #09090b;
+  min-height: 100vh;
+  letter-spacing: -0.011em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Notion-style Scrollbar reset */
+::-webkit-scrollbar {
+  display: none;
+}
+* {
+  scrollbar-width: none;
+}
+
+/* Minimalist select caret */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+}
+
+/* Smooth Apple-style micro transitions */
+@keyframes appleFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes appleSlideUp {
+  from { opacity: 0; transform: translateY(12px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-fade-in {
+  animation: appleFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: appleSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -18,7 +18,7 @@ declare module 'react' {
     | Iterable<ReactNode>
     | any;
 
-  export type FC<P = {}> = (props: P) => ReactElement<any, any> | null;
+  export type FC<P = {}> = (props: P & { key?: any }) => ReactElement<any, any> | null;
   export type FunctionComponent<P = {}> = FC<P>;
   export type PropsWithChildren<P = {}> = P & { children?: ReactNode };
 
@@ -50,6 +50,10 @@ declare module 'react' {
 
   export interface KeyboardEvent<T = any> {
     key: string;
+    shiftKey?: boolean;
+    ctrlKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
     preventDefault(): void;
   }
 
@@ -57,6 +61,18 @@ declare module 'react' {
     preventDefault(): void;
     stopPropagation(): void;
     target: T;
+  }
+
+  export interface SVGProps<T = any> {
+    className?: string;
+    viewBox?: string;
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: string | number;
+    xmlns?: string;
+    width?: string | number;
+    height?: string | number;
+    [key: string]: any;
   }
 
   export const createElement: any;
@@ -171,15 +187,68 @@ declare module 'react/jsx-dev-runtime' {
   export const Fragment: any;
 }
 
+declare module 'lucide-react' {
+  import React from 'react';
+  export type IconComponent = (props: React.SVGProps<SVGSVGElement> & { size?: number | string; color?: string; strokeWidth?: number | string; className?: string; [key: string]: any }) => any;
+  export const Sparkles: IconComponent;
+  export const Send: IconComponent;
+  export const Globe: IconComponent;
+  export const Trash2: IconComponent;
+  export const Copy: IconComponent;
+  export const Check: IconComponent;
+  export const FileText: IconComponent;
+  export const ChevronDown: IconComponent;
+  export const BookOpen: IconComponent;
+  export const Filter: IconComponent;
+  export const GraduationCap: IconComponent;
+  export const X: IconComponent;
+  export const ThumbsUp: IconComponent;
+  export const ThumbsDown: IconComponent;
+  export const Bot: IconComponent;
+  export const User: IconComponent;
+  export const Calendar: IconComponent;
+  export const Flame: IconComponent;
+  export const CheckCircle: IconComponent;
+  export const CheckCircle2: IconComponent;
+  export const Bookmark: IconComponent;
+  export const Circle: IconComponent;
+  export const ExternalLink: IconComponent;
+  export const Play: IconComponent;
+  export const Eye: IconComponent;
+  export const Clock: IconComponent;
+  export const Download: IconComponent;
+  export const Search: IconComponent;
+  export const Plus: IconComponent;
+  export const ArrowRight: IconComponent;
+}
+
 declare namespace React {
-  export type FC<P = {}> = (props: P) => any;
+  export type FC<P = {}> = (props: P & { key?: any }) => any;
   export type FunctionComponent<P = {}> = FC<P>;
   export type ReactElement<P = any, T = any> = any;
   export type ReactNode = any;
   export type ChangeEvent<T = any> = { target: T & { value: string } };
   export type MouseEvent<T = any> = { preventDefault(): void; stopPropagation(): void };
   export type FormEvent<T = any> = { preventDefault(): void; stopPropagation(): void };
-  export type KeyboardEvent<T = any> = { key: string; preventDefault(): void };
+  export interface KeyboardEvent<T = any> {
+    key: string;
+    shiftKey?: boolean;
+    ctrlKey?: boolean;
+    altKey?: boolean;
+    metaKey?: boolean;
+    preventDefault(): void;
+  }
+  export interface SVGProps<T = any> {
+    className?: string;
+    viewBox?: string;
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: string | number;
+    xmlns?: string;
+    width?: string | number;
+    height?: string | number;
+    [key: string]: any;
+  }
   export const StrictMode: any;
   export const Fragment: any;
   export const createElement: any;

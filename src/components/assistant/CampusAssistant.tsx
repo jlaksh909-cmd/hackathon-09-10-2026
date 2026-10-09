@@ -1,162 +1,237 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { INITIAL_RESOURCES, type Resource } from '../../data/mockData';
-import type {
-  ChatMessage,
-  LanguageFilter,
-  BranchFilter,
-  YearFilter,
-} from './types';
-import { getAssistantResponse } from './assistantResponses';
-import { VideoLectureCard } from './VideoLectureCard';
-import { ResourceCard } from './ResourceCard';
-import { StudyRoadmapCard } from './StudyRoadmapCard';
-import { PdfSummaryCard } from './PdfSummaryCard';
 import {
   Sparkles,
   Send,
-  Globe,
-  Trash2,
-  Copy,
-  Check,
-  FileText,
-  Youtube,
-  ChevronDown,
-  BookOpen,
-  GraduationCap,
-  X,
-  ThumbsUp,
-  ThumbsDown,
   Bot,
   User,
-  CheckCircle,
-} from './icons';
+  BookOpen,
+  CheckCircle2,
+  ChevronRight,
+  ThumbsUp,
+  Download,
+  Eye,
+  RotateCcw,
+  FileText,
+  Copy,
+  Check,
+  X,
+  Layers,
+  GraduationCap
+} from 'lucide-react';
 
-interface CampusAssistantProps {
-  initialBranch?: BranchFilter;
-  initialYear?: YearFilter;
-  selectedBranch?: BranchFilter;
-  selectedYear?: YearFilter;
+export interface CampusAssistantProps {
+  initialBranch?: string;
+  initialYear?: string;
+  selectedBranch?: string;
+  selectedYear?: string;
   className?: string;
 }
 
+interface MessageResource {
+  id: string;
+  title: string;
+  subject: string;
+  branch: string;
+  year: string;
+  fileUrl: string;
+  uploadedBy: string;
+  upvotes: number;
+  summary: string;
+}
+
+interface Message {
+  id: string;
+  sender: 'user' | 'assistant';
+  text: string;
+  timestamp: string;
+  resources?: MessageResource[];
+  topicTag?: string;
+}
+
+const QUICK_PROMPTS = [
+  'How do I prepare for DSA?',
+  'Engineering Mathematics (M1) high-yield topics',
+  'First-year study roadmap',
+  'Recommended notes for CSE 2nd Year',
+];
+
+const TARGET_TOPICS = ['All Topics', 'DSA', 'M1', 'BEE', 'OS', 'DBMS', 'Discrete Math', 'Networks'];
+
 export const CampusAssistant: React.FC<CampusAssistantProps> = ({
-  initialBranch = 'CSE',
-  initialYear = '1st Year',
-  selectedBranch: propBranch,
-  selectedYear: propYear,
   className = '',
 }) => {
-  // Student Profile State
-  const [selectedBranch, setSelectedBranch] = useState<BranchFilter>(propBranch || initialBranch);
-  const [selectedYear, setSelectedYear] = useState<YearFilter>(propYear || initialYear);
-  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-
-  // Language Filter State: 'all' | 'english' | 'hindi' | 'telugu'
-  const [activeLanguage, setActiveLanguage] = useState<LanguageFilter>('all');
-
-  // Document Context State: null = "General Guidance", or a specific Resource
-  const [selectedContextResource, setSelectedContextResource] = useState<Resource | null>(null);
-  const [isDocSelectorOpen, setIsDocSelectorOpen] = useState(false);
-
-  // Chat Stream State
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+  const [messages, setMessages] = useState<Message[]>([
     {
-      id: 'welcome-msg',
+      id: 'welcome-1',
       sender: 'assistant',
+      text: `### 👋 Welcome to Campus AI!
+I am your **24/7 Academic Guidance & Resource Finder**.
+
+* 📚 **Curriculum & Notes:** Ask about any semester subject, high-weightage topics, and formula sheets.
+* ⚡ **Study Roadmaps:** Get step-by-step blueprints for exam prep and DSA mastery.
+* 🔍 **Smart Recommendations:** I will automatically link verified faculty monographs and student-verified PDFs.
+
+Choose a quick prompt below or type your question:`,
       timestamp: 'Just now',
-      content: `### 👋 Welcome to CampusHub AI Academic Mentor!
-I am your 24/7 intelligent academic companion for **engineering coursework, syllabus mastery, and exam preparation**.
-
-* 📚 **Verified Resources:** Access handwritten faculty notes, syllabus copies, and solved question banks.
-* 🎥 **Multilingual Lectures:** Curated video tutorials in **English, Hindi (हिंदी), and Telugu (తెలుగు)**.
-* 📅 **Study Plans & Roadmaps:** Step-by-step revision schedules and high-yield question breakdowns.
-* 📄 **Document QA:** Select any uploaded PDF above the input box to get instant 3-bullet summaries and exam takeaways.
-
-Select a quick question below or ask anything about your courses:`,
-      matchedResources: INITIAL_RESOURCES.slice(0, 2),
+      resources: INITIAL_RESOURCES.slice(0, 2),
     },
   ]);
 
-  const [inputValue, setInputValue] = useState('');
+  const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
-  const [feedbackState, setFeedbackState] = useState<Record<string, 'up' | 'down'>>({});
+  const [selectedTopic, setSelectedTopic] = useState('All Topics');
+  const [previewResource, setPreviewResource] = useState<Resource | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll to bottom on new messages or typing state changes
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Quick Action Prompts
-  const quickActionPrompts = [
-    {
-      label: '🎯 What should a 1st-year focus on?',
-      query: 'What should a 1st-year engineering student focus on to maintain a high CGPA and build skills?',
-    },
-    {
-      label: '⚡ How to prepare for DSA from scratch?',
-      query: 'How to prepare for DSA from scratch for college exams and placements?',
-    },
-    {
-      label: '🎥 Show M1 video lectures in Telugu & Hindi',
-      query: 'Show M1 Engineering Mathematics video lectures in Telugu and Hindi',
-    },
-    {
-      label: '📅 Generate a 2-week exam preparation plan',
-      query: 'Generate a 2-week exam preparation plan with daily study roadmap',
-    },
-  ];
+  // Query matcher for smart linking
+  const findMatchingResources = (query: string, topic: string): MessageResource[] => {
+    const q = query.toLowerCase();
+    const topicFiltered = topic !== 'All Topics' ? topic.toLowerCase() : '';
 
-  // Handle Send Message
-  const handleSendMessage = (textToSend?: string) => {
-    const query = (textToSend || inputValue).trim();
-    if (!query) return;
+    const matched = INITIAL_RESOURCES.filter((res: Resource) => {
+      const titleMatch = res.title.toLowerCase().includes(q) || (topicFiltered && res.title.toLowerCase().includes(topicFiltered));
+      const subjectMatch = res.subject.toLowerCase().includes(q) || (topicFiltered && res.subject.toLowerCase().includes(topicFiltered));
+      const summaryMatch = res.summary.toLowerCase().includes(q);
+      const tagMatch = (res.tags || []).some(t => t.toLowerCase().includes(q) || (topicFiltered && t.toLowerCase().includes(topicFiltered)));
 
-    const userMessageId = `user-${Date.now()}`;
-    const newUserMessage: ChatMessage = {
-      id: userMessageId,
-      sender: 'user',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      content: query,
-      contextResourceTitle: selectedContextResource ? selectedContextResource.title : undefined,
-    };
+      // Keyword associations
+      const dsaMatch = (q.includes('dsa') || q.includes('algorithm') || q.includes('tree') || q.includes('data structure')) && res.subject.toLowerCase().includes('data');
+      const m1Match = (q.includes('m1') || q.includes('math') || q.includes('calculus') || q.includes('matrix') || q.includes('eigen')) && (res.subject.toLowerCase().includes('math') || res.title.toLowerCase().includes('math'));
+      const osMatch = (q.includes('os') || q.includes('operating') || q.includes('scheduling') || q.includes('deadlock') || q.includes('banker')) && res.subject.toLowerCase().includes('operating');
+      const dbmsMatch = (q.includes('dbms') || q.includes('sql') || q.includes('database') || q.includes('normalization') || q.includes('bcnf')) && res.subject.toLowerCase().includes('dbms');
+      const networkMatch = (q.includes('network') || q.includes('tcp') || q.includes('ip') || q.includes('protocol')) && res.subject.toLowerCase().includes('network');
 
-    setMessages((prev) => [...prev, newUserMessage]);
-    setInputValue('');
-    setIsTyping(true);
+      return titleMatch || subjectMatch || summaryMatch || tagMatch || dsaMatch || m1Match || osMatch || dbmsMatch || networkMatch;
+    });
 
-    // Realistic 600ms animated typing indicator before response arrival
-    setTimeout(() => {
-      const responseData = getAssistantResponse(
-        query,
-        selectedContextResource,
-        activeLanguage,
-        { branch: selectedBranch, year: selectedYear }
-      );
+    if (matched.length > 0) {
+      return matched.slice(0, 3);
+    }
 
-      const newAssistantMessage: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        ...responseData,
-      };
+    // Default top resources
+    if (q.includes('recommend') || q.includes('cse') || q.includes('first-year') || q.includes('roadmap')) {
+      return INITIAL_RESOURCES.slice(0, 2);
+    }
 
-      setMessages((prev) => [...prev, newAssistantMessage]);
-      setIsTyping(false);
-    }, 600);
+    return [];
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  // Response Generator
+  const generateResponse = (userQuery: string, topic: string) => {
+    const q = userQuery.toLowerCase().trim();
+    let text = '';
+
+    if (q.includes('dsa') || q.includes('data structure') || topic === 'DSA') {
+      text = `### ⚡ Master DSA: Step-by-Step Blueprint
+1. **Language Proficiency:** Master STL (C++) or Collections (Java). Understand memory models and pointer arithmetic.
+2. **Core Linear Structures (Weeks 1–3):**
+   * Dynamic arrays & amortized $O(1)$ insertions.
+   * Linked Lists: Two-pointer techniques (Floyd's cycle detection, fast & slow pointers).
+   * Monotonic Stacks & Circular Queues.
+3. **Non-Linear & Hierarchical (Weeks 4–7):**
+   * Binary Search Trees & balanced AVL tree rotations (balance factor $\\in \\{-1, 0, +1\\}$).
+   * Heaps: Min/Max heap priority queues for $O(\\log N)$ scheduling.
+4. **Graph Algorithms & Dynamic Programming (Weeks 8–10):**
+   * BFS/DFS traversals, Topological Sort (Kahn's), Dijkstra's shortest path.
+   * Memoization vs Tabulation with state transition formulas.
+
+*Verified lecture monographs with worked midterm solutions are attached below:*`;
+    } else if (q.includes('m1') || q.includes('mathematics') || q.includes('math') || topic === 'M1') {
+      text = `### 📐 Engineering Mathematics (M1) High-Yield Strategy
+* **Unit 1: Matrices & Linear Systems (Guaranteed 15 Marks)**
+  * Cayley-Hamilton Theorem: Use $A^{-1} = -\\frac{1}{a_n}(A^{n-1} + a_1 A^{n-2} + \\dots)$ for inverse and higher power proofs.
+  * Eigenvalues & Eigenvectors: Always verify properties: $\\sum \\lambda_i = \\text{Trace}(A)$ and $\\prod \\lambda_i = \\det(A)$.
+* **Unit 2: Differential Calculus & Taylor Expansions**
+  * Lagrange Mean Value Theorem & Cauchy's MVT proofs.
+  * Partial differentiation & Euler's theorem on homogeneous functions.
+* **Exam Working Tip:** Draw clean matrix augmentations $[A|B]$ and state elementary row operations explicitly for full partial marking.
+
+*Handwritten formula handouts and solved previous year papers are linked below:*`;
+    } else if (q.includes('first-year') || q.includes('1st-year') || q.includes('freshman') || q.includes('roadmap')) {
+      text = `### 🎓 First-Year Engineering Academic Roadmap
+1. **Target 8.5+ CGPA Early:** First-year fundamental subjects (M1, BEE, Engineering Physics) carry 4 credits each. High grades here create a crucial buffer.
+2. **Master One Language Deeply:** Focus on C or Python. Understand control flow, structs, recursion, and file I/O.
+3. **Weekly PYQ Habit:** 70% of university exam patterns repeat high-frequency derivations. Revise every Sunday.
+4. **Build Lab Rapport:** Ensure neat lab records and understand test-bench validations to score full internal marks.
+
+*Top recommended first-year notes are attached below:*`;
+    } else if (q.includes('2nd year') || q.includes('cse 2nd year') || q.includes('cse')) {
+      text = `### 💻 CSE 2nd-Year Core Curriculum Focus
+Second year introduces the pillars of Computer Science:
+* **Data Structures & Algorithms:** Focus on tree traversals, shortest path algorithms, and Master Theorem complexity proofs.
+* **Operating Systems:** Round-Robin time quantum tradeoffs, Banker's algorithm safe states, and Semaphore deadlock synchronization.
+* **Database Management Systems (DBMS):** Normalization (1NF through BCNF), ACID transaction semantics, and B+ Tree indexing.
+
+*Here are the top-rated monographs for 2nd Year CSE:*`;
+    } else if (q.includes('os') || q.includes('operating') || topic === 'OS') {
+      text = `### ⚙️ Operating Systems Core Concepts
+* **CPU Scheduling:** Round-Robin (optimal time slice prevents FCFS degradation), Preemptive Priority Queues, Multi-level feedback queues.
+* **Deadlock Management:**
+  * 4 Coffman Conditions: Mutual Exclusion, Hold & Wait, No Preemption, Circular Wait.
+  * Banker's Algorithm: Resource-allocation state vector verification.
+* **Memory Management:** Paging, TLB hit ratios, LRU Page Replacement, and Thrashing prevention using the Working Set Model.`;
+    } else if (q.includes('dbms') || q.includes('sql') || q.includes('normalization') || topic === 'DBMS') {
+      text = `### 🗄️ DBMS & SQL Normalization Guidelines
+* **1NF:** Atomic attribute domain, no repeating groups.
+* **2NF:** 1NF + No partial functional dependency on composite candidate keys.
+* **3NF:** 2NF + No transitive functional dependency ($X \\rightarrow Y$, $Y \\rightarrow Z$).
+* **BCNF:** For every non-trivial functional dependency $X \\rightarrow Y$, $X$ must strictly be a Super Key.
+* **ACID Transactions:** Atomicity (Undo logs), Consistency (Invariants), Isolation (2-Phase Locking), Durability (Write-Ahead Logging).`;
+    } else {
+      text = `### 💡 Campus AI Academic Guidance
+Regarding **"${userQuery}"** ${topic !== 'All Topics' ? `in **${topic}**` : ''}:
+* **Core Academic Invariant:** Focus on standard syllabus proofs, base case verifications, and unit-by-unit definitions.
+* **Exam Preparation:** Solve previous year midterm problems to calibrate time allocation per question.
+* **Peer-Reviewed Reference:** Check the verified faculty notes in the CampusHub repository below:`;
     }
+
+    const matchedResources = findMatchingResources(userQuery, topic);
+    return { text, resources: matchedResources };
+  };
+
+  const handleSendMessage = (textToSend?: string) => {
+    const query = (textToSend || input).trim();
+    if (!query || isTyping) return;
+
+    const userMsg: Message = {
+      id: `usr-${Date.now()}`,
+      sender: 'user',
+      text: query,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    if (!textToSend) setInput('');
+    setIsTyping(true);
+
+    // 600ms realistic thinking/typing latency
+    setTimeout(() => {
+      const responseData = generateResponse(query, selectedTopic);
+      const assistantMsg: Message = {
+        id: `ai-${Date.now()}`,
+        sender: 'assistant',
+        text: responseData.text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        resources: responseData.resources,
+        topicTag: selectedTopic !== 'All Topics' ? selectedTopic : undefined,
+      };
+
+      setMessages((prev) => [...prev, assistantMsg]);
+      setIsTyping(false);
+    }, 600);
   };
 
   const handleClearChat = () => {
@@ -164,645 +239,372 @@ Select a quick question below or ask anything about your courses:`,
       {
         id: `welcome-${Date.now()}`,
         sender: 'assistant',
-        timestamp: 'Just now',
-        content: `### 🧹 Chat History Cleared
-I am ready for your next question! Ask about specific subjects (**DSA, M1, BEE, Python**), attach a PDF above to summarize, or generate a custom study plan.`,
+        text: `### 🔄 Chat Cleared
+Ready for your questions! Select a topic pill or prompt above.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        resources: INITIAL_RESOURCES.slice(0, 2),
       },
     ]);
   };
 
-  const handleCopyAnswer = (messageId: string, content: string) => {
-    navigator.clipboard.writeText(content);
-    setCopiedMessageId(messageId);
-    setTimeout(() => {
-      setCopiedMessageId(null);
-    }, 2000);
-  };
-
-  const handleFeedback = (messageId: string, type: 'up' | 'down') => {
-    setFeedbackState((prev) => {
-      const next = { ...prev };
-      if (next[messageId] === type) {
-        delete next[messageId];
-      } else {
-        next[messageId] = type;
-      }
-      return next;
-    });
-  };
-
-  const handleSummarizeSpecificPdf = (resource: Resource) => {
-    setSelectedContextResource(resource);
-    handleSendMessage(`Summarize "${resource.title}" in 3 bullet points with key exam takeaways.`);
-  };
-
-  // Helper for rendering simple markdown typography cleanly
-  const renderFormattedMarkdown = (text: string) => {
-    const lines = text.split('\n');
-
-    return (
-      <div className="space-y-2 text-xs sm:text-sm leading-relaxed text-slate-800">
-        {lines.map((line, index) => {
-          const trimmed = line.trim();
-
-          if (!trimmed) {
-            return <div key={index} className="h-1" />;
-          }
-
-          if (trimmed.startsWith('### ')) {
-            return (
-              <h4 key={index} className="pt-1 text-sm font-bold text-slate-900 sm:text-base">
-                {trimmed.replace('### ', '')}
-              </h4>
-            );
-          }
-
-          if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
-            const bulletContent = trimmed.substring(2);
-            return (
-              <div key={index} className="flex items-start gap-2 pl-1">
-                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(bulletContent) }} />
-              </div>
-            );
-          }
-
-          if (/^\d+\.\s/.test(trimmed)) {
-            const num = trimmed.match(/^\d+\./)?.[0];
-            const numContent = trimmed.replace(/^\d+\.\s*/, '');
-            return (
-              <div key={index} className="flex items-start gap-2 pl-1">
-                <span className="shrink-0 font-bold text-indigo-600">{num}</span>
-                <span dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(numContent) }} />
-              </div>
-            );
-          }
-
-          return (
-            <p
-              key={index}
-              dangerouslySetInnerHTML={{ __html: formatInlineMarkdown(trimmed) }}
-            />
-          );
-        })}
-      </div>
-    );
-  };
-
-  const formatInlineMarkdown = (str: string) => {
-    return str
-      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-slate-900">$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em class="text-slate-700">$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="rounded bg-slate-100 px-1 py-0.5 font-mono text-[11px] text-indigo-700 ring-1 ring-slate-200">$1</code>');
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
-    <div
-      className={`flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-slate-50 shadow-xl ${className}`}
-      style={{ minHeight: '680px' }}
-    >
-      {/* 1. Header with Active Presence Indicator, Academic Filter, and Actions */}
-      <header className="relative z-30 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md sm:px-6">
-        {/* Left: Brand & Presence Indicator */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-600 text-white shadow-md shadow-indigo-600/20 ring-1 ring-white/30">
-            <Sparkles className="h-5 w-5" />
-            {/* Pulsing Emerald Dot */}
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500" />
-            </span>
-          </div>
-
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-tight text-slate-900 sm:text-base">
-                CampusHub AI
-              </h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Active
-              </span>
+    <div className={`w-full max-w-5xl mx-auto flex flex-col gap-4 animate-fade-in ${className}`}>
+      
+      {/* ── Glassmorphic Main Container ── */}
+      <div className="bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl overflow-hidden flex flex-col h-[760px] text-white">
+        
+        {/* 1. Header & Assistant Status Bar */}
+        <div className="px-5 py-4 border-b border-white/15 bg-white/5 backdrop-blur-md flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 border border-white/20">
+              <Bot className="w-5 h-5" />
             </div>
-            <p className="text-[11px] text-slate-500">
-              Verified Academic Portal Guidance & Syllabus Mentor
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Academic Year/Branch Filter Badge & Clear Chat Action */}
-        <div className="flex items-center gap-2">
-          {/* Academic Profile Badge (Dropdown Trigger) */}
-          <div className="relative z-40">
-            <button
-              onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
-              title="Filter by Academic Year and Branch"
-            >
-              <GraduationCap className="h-3.5 w-3.5 text-indigo-600" />
-              <span>
-                {selectedYear} • {selectedBranch}
-              </span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
-            </button>
-
-            {/* Academic Profile Dropdown Modal */}
-            {isProfileDropdownOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-[90]"
-                  onClick={() => setIsProfileDropdownOpen(false)}
-                />
-                <div className="absolute right-0 z-[100] mt-1.5 w-64 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xl ring-1 ring-black/10">
-                  <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2">
-                    <span className="text-xs font-semibold text-slate-900">Student Profile</span>
-                    <button
-                      onClick={() => setIsProfileDropdownOpen(false)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        Academic Year
-                      </label>
-                      <div className="mt-1 grid grid-cols-2 gap-1">
-                        {(['1st Year', '2nd Year', '3rd Year', '4th Year'] as YearFilter[]).map((y) => (
-                          <button
-                            key={y}
-                            onClick={() => {
-                              setSelectedYear(y);
-                            }}
-                            className={`rounded-md px-2 py-1 text-xs font-medium text-left transition-colors ${
-                              selectedYear === y
-                                ? 'bg-indigo-600 text-white font-semibold'
-                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            {y}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                        Engineering Branch
-                      </label>
-                      <div className="mt-1 grid grid-cols-3 gap-1">
-                        {(['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'All'] as BranchFilter[]).map((b) => (
-                          <button
-                            key={b}
-                            onClick={() => {
-                              setSelectedBranch(b);
-                            }}
-                            className={`rounded-md px-2 py-1 text-xs font-medium text-center transition-colors ${
-                              selectedBranch === b
-                                ? 'bg-indigo-600 text-white font-semibold'
-                                : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                            }`}
-                          >
-                            {b}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setIsProfileDropdownOpen(false)}
-                      className="w-full rounded-lg bg-slate-900 py-1.5 text-center text-xs font-semibold text-white shadow-sm hover:bg-slate-800 transition-colors"
-                    >
-                      Apply Filter
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Multilingual Toggle Filter */}
-          <div className="hidden sm:flex items-center rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-xs font-medium text-slate-600">
-            <span className="flex items-center gap-1 px-1.5 text-slate-400">
-              <Globe className="h-3 w-3" />
-            </span>
-            {(['all', 'english', 'hindi', 'telugu'] as LanguageFilter[]).map((lang) => {
-              const labels = {
-                all: 'All',
-                english: 'EN',
-                hindi: 'हिंदी',
-                telugu: 'తెలుగు',
-              };
-              return (
-                <button
-                  key={lang}
-                  onClick={() => setActiveLanguage(lang)}
-                  className={`rounded-md px-2 py-1 text-[11px] font-semibold transition-all ${
-                    activeLanguage === lang
-                      ? 'bg-white text-indigo-700 shadow-sm'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {labels[lang]}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Clear Chat Action */}
-          <button
-            onClick={handleClearChat}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600"
-            title="Clear Chat History"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Message Bubble Stream with Auto-Scroll */}
-      <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 space-y-5">
-        {messages.map((message) => {
-          const isUser = message.sender === 'user';
-
-          return (
-            <div
-              key={message.id}
-              className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`flex max-w-[92%] sm:max-w-[85%] md:max-w-[78%] items-start gap-2.5 sm:gap-3 ${
-                  isUser ? 'flex-row-reverse' : 'flex-row'
-                }`}
-              >
-                {/* Avatar Badge */}
-                <div
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs shadow-sm ${
-                    isUser
-                      ? 'bg-indigo-600 text-white font-semibold'
-                      : 'border border-indigo-200 bg-gradient-to-br from-indigo-50 to-white text-indigo-700'
-                  }`}
-                >
-                  {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                </div>
-
-                {/* Bubble Container */}
-                <div className="flex-1">
-                  {/* Context resource tag if query was grounded */}
-                  {message.contextResourceTitle && (
-                    <div
-                      className={`mb-1 flex items-center gap-1 text-[11px] font-medium ${
-                        isUser ? 'justify-end text-indigo-200' : 'text-slate-500'
-                      }`}
-                    >
-                      <FileText className="h-3 w-3 text-indigo-500" />
-                      <span>Context: {message.contextResourceTitle}</span>
-                    </div>
-                  )}
-
-                  {/* Bubble Surface */}
-                  <div
-                    className={`relative rounded-2xl p-4 shadow-sm transition-all ${
-                      isUser
-                        ? 'rounded-tr-sm bg-indigo-600 text-white selection:bg-indigo-400 selection:text-white'
-                        : 'rounded-tl-sm border border-slate-200/80 bg-white text-slate-800 ring-1 ring-black/[0.02]'
-                    }`}
-                  >
-                    {/* Render content */}
-                    {isUser ? (
-                      <p className="text-xs sm:text-sm font-medium leading-relaxed whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-                    ) : (
-                      <>
-                        {renderFormattedMarkdown(message.content)}
-
-                        {/* Interactive Rich Embed 1: PDF Summary Card */}
-                        {message.pdfSummary && (
-                          <PdfSummaryCard
-                            summary={message.pdfSummary}
-                            onDownloadPdf={() => {}}
-                          />
-                        )}
-
-                        {/* Interactive Rich Embed 2: Study Plan Generator Card */}
-                        {message.studyRoadmap && (
-                          <StudyRoadmapCard roadmap={message.studyRoadmap} />
-                        )}
-
-                        {/* Interactive Rich Embed 3: Matching Resource Cards */}
-                        {message.matchedResources && message.matchedResources.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-100">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
-                                <BookOpen className="h-3.5 w-3.5 text-indigo-600" />
-                                <span>Recommended Academic Resources</span>
-                              </span>
-                              <span className="text-[11px] text-slate-500">
-                                {message.matchedResources.length} verified PDF{message.matchedResources.length > 1 ? 's' : ''}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                              {message.matchedResources.map((res) => (
-                                <ResourceCard
-                                  key={res.id}
-                                  resource={res}
-                                  onSummarizeNow={handleSummarizeSpecificPdf}
-                                  onSelectAsContext={(r) => setSelectedContextResource(r)}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Interactive Rich Embed 4: Curated Multilingual Video Lectures */}
-                        {message.videoLectures && message.videoLectures.length > 0 && (
-                          <div className="mt-4 pt-3 border-t border-slate-100">
-                            <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
-                              <span className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-red-600">
-                                <Youtube className="h-3.5 w-3.5" />
-                                <span>Curated Video Lectures (English • Hindi • Telugu)</span>
-                              </span>
-
-                              {/* Language Filter Pills */}
-                              <div className="flex items-center gap-1">
-                                {(['all', 'english', 'hindi', 'telugu'] as LanguageFilter[]).map((lang) => (
-                                  <button
-                                    key={lang}
-                                    onClick={() => setActiveLanguage(lang)}
-                                    className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                                      activeLanguage === lang
-                                        ? 'bg-red-600 text-white'
-                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                    }`}
-                                  >
-                                    {lang}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                              {message.videoLectures.map((video) => (
-                                <VideoLectureCard key={video.id} video={video} />
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Bottom Action Footer on AI Bubble: Copy Answer & Feedback */}
-                        <div className="mt-3.5 flex items-center justify-between border-t border-slate-100 pt-2 text-[11px] text-slate-500">
-                          <span className="text-[10px] text-slate-400">{message.timestamp}</span>
-
-                          <div className="flex items-center gap-2">
-                            {/* Copy Answer Button */}
-                            <button
-                              onClick={() => handleCopyAnswer(message.id, message.content)}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                              title="Copy response text"
-                            >
-                              {copiedMessageId === message.id ? (
-                                <>
-                                  <Check className="h-3.5 w-3.5 text-emerald-600" />
-                                  <span className="font-semibold text-emerald-700">Copied!</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-3.5 w-3.5 text-slate-400" />
-                                  <span>Copy Answer</span>
-                                </>
-                              )}
-                            </button>
-
-                            {/* Feedback Buttons */}
-                            <div className="flex items-center gap-0.5 border-l border-slate-200 pl-2">
-                              <button
-                                onClick={() => handleFeedback(message.id, 'up')}
-                                className={`rounded p-1 text-slate-400 hover:text-indigo-600 transition-colors ${
-                                  feedbackState[message.id] === 'up' ? 'text-indigo-600' : ''
-                                }`}
-                                title="Helpful"
-                              >
-                                <ThumbsUp className="h-3.5 w-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleFeedback(message.id, 'down')}
-                                className={`rounded p-1 text-slate-400 hover:text-rose-600 transition-colors ${
-                                  feedbackState[message.id] === 'down' ? 'text-rose-600' : ''
-                                }`}
-                                title="Not helpful"
-                              >
-                                <ThumbsDown className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
+            <div>
+              <h1 className="font-bold text-sm sm:text-base text-white tracking-tight flex items-center gap-2">
+                Campus AI • Academic Guidance & Resource Finder
+                <Sparkles className="w-4 h-4 text-amber-300" />
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" />
+                  Active
+                </span>
+                <span className="text-[11px] text-slate-400">• Verified Syllabus Assistant</span>
               </div>
             </div>
-          );
-        })}
-
-        {/* Realistic 600ms Animated Typing Indicator */}
-        {isTyping && (
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-indigo-200 bg-white text-indigo-700 shadow-sm">
-              <Bot className="h-4 w-4" />
-            </div>
-            <div className="flex items-center gap-1.5 rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.3s]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-500 [animation-delay:-0.15s]" />
-              <span className="h-2 w-2 animate-bounce rounded-full bg-indigo-500" />
-              <span className="ml-2 text-xs font-medium text-slate-500">
-                CampusHub AI is thinking...
-              </span>
-            </div>
           </div>
-        )}
 
-        <div ref={messagesEndRef} />
-      </main>
+          {/* Quick Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleClearChat}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-slate-200 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Reset conversation"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Clear Chat</span>
+            </button>
+          </div>
+        </div>
 
-      {/* 3. Quick Action Prompt Chips */}
-      <div className="border-t border-slate-200/60 bg-white/70 px-4 py-2 sm:px-6">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Suggested:
+        {/* 2. Messages Stream Area */}
+        <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4">
+          
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {/* Bot Avatar */}
+              {msg.sender === 'assistant' && (
+                <div className="w-8 h-8 rounded-xl bg-slate-800/80 border border-white/15 flex items-center justify-center text-indigo-300 shrink-0 mt-1 shadow-sm">
+                  <Bot className="w-4 h-4" />
+                </div>
+              )}
+
+              {/* Message Bubble Container */}
+              <div
+                className={`max-w-[88%] sm:max-w-[80%] flex flex-col gap-2.5 rounded-2xl p-4 sm:p-5 text-xs sm:text-sm leading-relaxed transition-all shadow-xl ${
+                  msg.sender === 'user'
+                    ? 'bg-indigo-600/80 backdrop-blur-md text-white border border-indigo-400/30 rounded-br-sm'
+                    : 'bg-slate-800/60 backdrop-blur-md text-slate-100 border border-white/10 rounded-bl-sm'
+                }`}
+              >
+                {/* Bubble Header */}
+                <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/10 text-[11px] font-semibold text-slate-300">
+                  <span className="flex items-center gap-1 text-white">
+                    {msg.sender === 'user' ? (
+                      <>
+                        <User className="w-3 h-3 text-indigo-200" /> You
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3 text-amber-300" /> Campus AI
+                      </>
+                    )}
+                  </span>
+                  <span className="text-[10px] text-slate-400">{msg.timestamp}</span>
+                </div>
+
+                {/* Markdown text body */}
+                <div className="whitespace-pre-wrap font-normal text-slate-100 space-y-2">
+                  {msg.text}
+                </div>
+
+                {/* Embedded Smart Resource Recommendations */}
+                {msg.resources && msg.resources.length > 0 && (
+                  <div className="mt-2 pt-3 border-t border-white/10 flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-300 uppercase tracking-wider">
+                      <span className="flex items-center gap-1.5">
+                        <BookOpen className="w-3.5 h-3.5" /> Recommended Study Notes ({msg.resources.length})
+                      </span>
+                      <span className="text-[10px] font-normal text-slate-400 lowercase">click to preview</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {msg.resources.map((res) => (
+                        <div
+                          key={res.id}
+                          className="group/card bg-white/10 hover:bg-white/15 border border-white/15 rounded-xl p-3 flex flex-col justify-between transition-all hover:border-indigo-400/40 shadow-sm"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1.5">
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-200 border border-indigo-400/20 text-[10px] font-bold uppercase truncate max-w-[120px]">
+                                {res.subject}
+                              </span>
+                              <span className="text-[10px] text-slate-300 flex items-center gap-1 shrink-0">
+                                <ThumbsUp className="w-2.5 h-2.5 text-amber-300" /> {res.upvotes}
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-xs text-white group-hover/card:text-indigo-200 transition-colors line-clamp-1">
+                              {res.title}
+                            </h4>
+                            <p className="text-[11px] text-slate-300 mt-0.5 flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3 text-slate-400" /> By {res.uploadedBy}
+                            </p>
+                          </div>
+
+                          <div className="mt-2.5 pt-2 border-t border-white/10 flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewResource(res as Resource)}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600/80 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Preview</span>
+                            </button>
+
+                            <a
+                              href={res.fileUrl}
+                              download
+                              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 hover:text-white text-[11px] font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>PDF</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Assistant Bubble Actions */}
+                {msg.sender === 'assistant' && (
+                  <div className="mt-1 flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setLikedMap((prev) => ({ ...prev, [msg.id]: !prev[msg.id] }))}
+                      className={`text-[11px] px-2 py-0.5 rounded-md transition-all flex items-center gap-1 cursor-pointer ${
+                        likedMap[msg.id]
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-semibold'
+                          : 'text-slate-400 hover:text-slate-200'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{likedMap[msg.id] ? 'Helpful' : 'Helpful?'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(msg.text, msg.id)}
+                      className="text-[11px] text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded-md hover:bg-white/5 transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedId === msg.id ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-400" /> Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" /> Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* User Avatar */}
+              {msg.sender === 'user' && (
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 border border-indigo-400/40 flex items-center justify-center text-white shrink-0 mt-1 shadow-md">
+                  <User className="w-4 h-4" />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Animated 3-Dots Typing Indicator */}
+          {isTyping && (
+            <div className="flex gap-3 justify-start animate-fade-in">
+              <div className="w-8 h-8 rounded-xl bg-slate-800/80 border border-white/15 flex items-center justify-center text-indigo-300 shrink-0">
+                <Bot className="w-4 h-4" />
+              </div>
+              <div className="bg-slate-800/60 backdrop-blur-md border border-white/10 rounded-2xl rounded-bl-sm px-4 py-3 shadow-lg flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce" />
+                <span className="text-xs text-slate-300 ml-1 font-medium">Campus AI is thinking...</span>
+              </div>
+            </div>
+          )}
+
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* 3. Quick Prompt Chips Bar */}
+        <div className="px-4 py-2 bg-white/5 border-t border-white/10 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-amber-300" /> Quick Prompts:
           </span>
-          {quickActionPrompts.map((chip, idx) => (
+          {QUICK_PROMPTS.map((prompt, idx) => (
             <button
               key={idx}
-              onClick={() => handleSendMessage(chip.query)}
-              className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-700 active:scale-95"
+              type="button"
+              onClick={() => handleSendMessage(prompt)}
+              className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 text-xs text-slate-200 hover:text-white whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
             >
-              {chip.label}
+              <span>{prompt}</span>
+              <ChevronRight className="w-3 h-3 text-slate-400" />
             </button>
           ))}
         </div>
+
+        {/* 4. Targeted Study Mode Selector & Input Footer */}
+        <div className="p-3 sm:p-4 bg-slate-900/60 backdrop-blur-md border-t border-white/15 flex flex-col gap-2.5">
+          
+          {/* Targeted Study Mode Filters */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+              <Layers className="w-3 h-3 text-indigo-400" /> Study Mode:
+            </span>
+            {TARGET_TOPICS.map((topic) => (
+              <button
+                key={topic}
+                type="button"
+                onClick={() => setSelectedTopic(topic)}
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold transition-all cursor-pointer ${
+                  selectedTopic === topic
+                    ? 'bg-indigo-600 text-white shadow-sm border border-indigo-400/40'
+                    : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10'
+                }`}
+              >
+                {topic}
+              </button>
+            ))}
+          </div>
+
+          {/* Form Input */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="flex items-center gap-2"
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                selectedTopic !== 'All Topics'
+                  ? `Ask specific question about ${selectedTopic} syllabus & proofs...`
+                  : 'Ask about subjects, DSA, M1, BEE, exams, or syllabus...'
+              }
+              className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-xs sm:text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all shadow-inner"
+            />
+
+            <button
+              type="submit"
+              disabled={!input.trim() || isTyping}
+              className="px-5 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-all disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/30 hover:scale-[1.02] active:scale-95 shrink-0"
+            >
+              <span>Send</span>
+              <Send className="w-3.5 h-3.5" />
+            </button>
+          </form>
+        </div>
       </div>
 
-      {/* 4. Document Context Selector & Quick Action Pill */}
-      <div className="relative z-20 border-t border-slate-200 bg-white px-4 pt-2.5 pb-1 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          {/* Document Context Selector Pill */}
-          <div className="relative flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-slate-500">Context:</span>
-            <button
-              onClick={() => setIsDocSelectorOpen(!isDocSelectorOpen)}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all ${
-                selectedContextResource
-                  ? 'border-indigo-300 bg-indigo-50/80 text-indigo-700 ring-1 ring-indigo-500/10'
-                  : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              <FileText
-                className={`h-3.5 w-3.5 ${
-                  selectedContextResource ? 'text-indigo-600' : 'text-slate-400'
-                }`}
-              />
-              <span className="max-w-[170px] truncate sm:max-w-[220px]">
-                {selectedContextResource ? selectedContextResource.title : 'General Guidance (All)'}
-              </span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
-            </button>
-
-            {/* Clear Context Resource Button */}
-            {selectedContextResource && (
-              <button
-                onClick={() => setSelectedContextResource(null)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                title="Reset to General Guidance"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-
-            {/* Context Selector Dropdown Menu */}
-            {isDocSelectorOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-[90]"
-                  onClick={() => setIsDocSelectorOpen(false)}
-                />
-                <div className="absolute bottom-9 left-12 z-[100] w-72 rounded-xl border border-slate-200 bg-white p-2 shadow-2xl ring-1 ring-black/10">
-                  <div className="mb-1.5 flex items-center justify-between px-2 pt-1 pb-1 border-b border-slate-100">
-                    <span className="text-xs font-bold text-slate-900">Select Document Context</span>
-                    <button
-                      onClick={() => setIsDocSelectorOpen(false)}
-                      className="text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-
-                <div className="max-h-56 overflow-y-auto space-y-1">
-                  <button
-                    onClick={() => {
-                      setSelectedContextResource(null);
-                      setIsDocSelectorOpen(false);
-                    }}
-                    className={`w-full rounded-lg px-2.5 py-1.5 text-left text-xs font-medium transition-colors ${
-                      !selectedContextResource
-                        ? 'bg-indigo-600 text-white font-semibold'
-                        : 'text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    🌐 General Guidance (Search across all notes)
-                  </button>
-
-                  {INITIAL_RESOURCES.map((res: Resource) => {
-                    const isSelected = selectedContextResource?.id === res.id;
-                    return (
-                      <button
-                        key={res.id}
-                        onClick={() => {
-                          setSelectedContextResource(res);
-                          setIsDocSelectorOpen(false);
-                        }}
-                        className={`flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white font-semibold'
-                            : 'text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="min-w-0 pr-2">
-                          <p className="truncate font-medium">{res.title}</p>
-                          <p
-                            className={`text-[10px] ${
-                              isSelected ? 'text-indigo-100' : 'text-slate-400'
-                            }`}
-                          >
-                            {res.format} • {res.fileSize} • {res.subject}
-                          </p>
-                        </div>
-                        {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                      </button>
-                    );
-                  })}
+      {/* ── Document Preview Modal Overlay (Glassmorphic) ── */}
+      {previewResource && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-slate-900/95 border border-white/20 shadow-2xl rounded-2xl max-w-2xl w-full p-6 text-white flex flex-col gap-4 animate-slide-up">
+            <div className="flex items-center justify-between border-b border-white/15 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center text-indigo-300">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">{previewResource.title}</h3>
+                  <p className="text-[11px] text-slate-400">{previewResource.subject} • {previewResource.branch} ({previewResource.year})</p>
                 </div>
               </div>
-            </>
-          )}
-        </div>
+              <button
+                type="button"
+                onClick={() => setPreviewResource(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-          {/* Quick Action Pill when specific PDF is selected */}
-          {selectedContextResource && (
-            <button
-              onClick={() => handleSummarizeSpecificPdf(selectedContextResource)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-95 animate-fadeIn"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>📄 Summarize this PDF in 3 bullet points</span>
-            </button>
-          )}
-        </div>
-      </div>
+            <div className="space-y-3 text-xs sm:text-sm text-slate-200">
+              <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                <span className="text-[11px] font-bold text-indigo-300 uppercase block mb-1">Executive Summary</span>
+                <p className="text-slate-300 leading-relaxed">{previewResource.summary}</p>
+              </div>
 
-      {/* 5. Modern Chat Input Area */}
-      <footer className="border-t border-slate-200 bg-white p-3 sm:p-4">
-        <div className="relative flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              selectedContextResource
-                ? `Ask anything about "${selectedContextResource.title}"...`
-                : 'Ask about subjects, DSA, M1, BEE, exams, or syllabus...'
-            }
-            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pr-12 text-xs sm:text-sm text-slate-800 placeholder-slate-400 transition-all focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          />
+              {previewResource.keyTakeaways && previewResource.keyTakeaways.length > 0 && (
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[11px] font-bold text-emerald-300 uppercase block mb-1">Key Exam Takeaways</span>
+                  <ul className="space-y-1">
+                    {previewResource.keyTakeaways.map((k, i) => (
+                      <li key={i} className="flex items-start gap-1.5 text-slate-300">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>{k}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-          <button
-            onClick={() => handleSendMessage()}
-            disabled={!inputValue.trim() || isTyping}
-            className={`absolute right-1.5 flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
-              inputValue.trim() && !isTyping
-                ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'
-                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-            }`}
-            title="Send query"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
+              <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/10">
+                <span>Uploaded by: <strong className="text-white">{previewResource.uploadedBy}</strong></span>
+                <span className="flex items-center gap-1 text-amber-300 font-semibold">
+                  <ThumbsUp className="w-3 h-3" /> {previewResource.upvotes} Student Endorsements
+                </span>
+              </div>
+            </div>
 
-        {/* Disclaimer footer */}
-        <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-          <span className="flex items-center gap-1">
-            <CheckCircle className="h-3 w-3 text-emerald-500" />
-            <span>CampusHub AI uses verified university syllabus & peer recommendations</span>
-          </span>
-          <span className="hidden sm:inline">Press Enter to send</span>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/15">
+              <button
+                type="button"
+                onClick={() => setPreviewResource(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 hover:text-white text-xs font-semibold cursor-pointer"
+              >
+                Close Preview
+              </button>
+              <a
+                href={previewResource.fileUrl}
+                download
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-indigo-600/30"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Document</span>
+              </a>
+            </div>
+          </div>
         </div>
-      </footer>
+      )}
     </div>
   );
 };

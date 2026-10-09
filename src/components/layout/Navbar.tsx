@@ -2,7 +2,7 @@ import { Search, Bell, Menu, Command } from 'lucide-react';
 import type { Branch, Year } from '../../data/mockData';
 import { BRANCHES, YEARS } from '../../data/mockData';
 
-export type TabId = 'library' | 'assistant' | 'admin';
+export type TabId = 'library' | 'courses' | 'resources' | 'assistant' | 'admin' | 'schedule';
 
 interface NavbarProps {
   activeTab: TabId;

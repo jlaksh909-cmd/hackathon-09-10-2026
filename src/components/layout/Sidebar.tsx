@@ -131,10 +131,8 @@ export default function Sidebar({
                 <button
                   key={item.id}
                   onClick={() => {
-                    if (item.id === 'library' || item.id === 'assistant' || item.id === 'admin') {
-                      onTabChange(item.id);
-                      onClose();
-                    }
+                    onTabChange(item.id);
+                    onClose();
                   }}
                   className={`
                     w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium

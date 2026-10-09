@@ -3,8 +3,11 @@ import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
 import type { TabId } from './components/layout/Navbar';
 import ResourceLibrary from './components/library/ResourceLibrary';
+import CourseModules from './components/courses/CourseModules';
+import ResourceArchive from './components/archive/ResourceArchive';
 import CampusAssistant from './components/assistant/CampusAssistant';
 import AdminDashboard from './components/admin/AdminDashboard';
+import MidtermSchedule from './components/schedule/MidtermSchedule';
 import { mockResources } from './data/mockData';
 import type { Resource, Branch, Year } from './data/mockData';
 import { fetchResources, upvoteResource } from './services/api';
@@ -67,6 +70,26 @@ export default function App() {
             searchQuery={searchQuery}
           />
         );
+      case 'courses':
+        return (
+          <CourseModules
+            selectedBranch={selectedBranch}
+            selectedYear={selectedYear}
+            resources={resources}
+            onUpvote={handleUpvote}
+            onNavigateToNotes={() => setActiveTab('library')}
+          />
+        );
+      case 'resources':
+        return (
+          <ResourceArchive
+            resources={resources}
+            selectedBranch={selectedBranch}
+            selectedYear={selectedYear}
+            onUpvote={handleUpvote}
+            onAddResource={handleAddResource}
+          />
+        );
       case 'assistant':
         return (
           <CampusAssistant
@@ -78,6 +101,14 @@ export default function App() {
         return (
           <AdminDashboard
             onResourceApproved={loadResources}
+          />
+        );
+      case 'schedule':
+        return (
+          <MidtermSchedule
+            selectedBranch={selectedBranch}
+            selectedYear={selectedYear}
+            onNavigateToAssistant={() => setActiveTab('assistant')}
           />
         );
       default:

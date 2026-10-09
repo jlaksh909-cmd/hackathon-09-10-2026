@@ -253,6 +253,12 @@ declare module 'lucide-react' {
   export const Calculator: IconComponent;
   export const Upload: IconComponent;
   export const FileUp: IconComponent;
+  export const Grid: IconComponent;
+  export const List: IconComponent;
+  export const RotateCcw: IconComponent;
+  export const MapPin: IconComponent;
+  export const AlertCircle: IconComponent;
+  export const CalendarDays: IconComponent;
 }
 
 declare module 'firebase/app' {

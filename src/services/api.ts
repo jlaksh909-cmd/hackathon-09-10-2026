@@ -1,3 +1,4 @@
+import { mockResources } from '../data/mockData';
 import type { Resource, Branch, Year } from '../data/mockData';
 import {
   fetchFirebaseResources,
@@ -255,9 +256,9 @@ export async function fetchPendingModeration(): Promise<Resource[]> {
       return json.data;
     }
   } catch {
-    // Fallback
+    // fallback
   }
-  return [];
+  return mockResources.filter((r) => r.status === 'pending');
 }
 
 export async function approveResource(id: string): Promise<Resource> {
